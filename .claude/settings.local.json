@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git config *)",
+      "Bash(git commit *)",
+      "Bash(gh auth *)",
+      "PowerShell(gh auth *)",
+      "PowerShell(winget install *)",
+      "Bash(command -v gh)",
+      "Bash(gh repo *)",
+      "PowerShell(gh repo *)",
+      "PowerShell(Get-Command *)",
+      "PowerShell(Get-Content *)",
+      "Bash(gh api *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\86139\\\\Documents\\\\starting-ragchatbot-codebase-main\\\\starting-ragchatbot-codebase-main\\\\backend\" -Recurse -File)",
+      "Bash(Select-Object -First 20)",
+      "Bash(git add *)",
+      "Bash(Remove-Item -Recurse -Force \"C:\\\\Users\\\\86139\\\\Documents\\\\starting-ragchatbot-codebase-main\\\\starting-ragchatbot-codebase-main\\\\backend\\\\chroma_db\" -ErrorAction SilentlyContinue)",
+      "Bash(Write-Output \"Done\")",
+      "Bash(uv run *)",
+      "Bash(curl *)",
+      "Bash(git *)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_evaluate",
+      "Bash(dir \"C:\\\\Users\\\\86139\\\\Documents\\\\starting-ragchatbot-codebase-main\\\\starting-ragchatbot-codebase-main\\\\backend\")",
+      "Bash(python -c \"import sys; print\\(sys.version\\)\")",
+      "Bash(.venv/Scripts/python.exe -c \"import chromadb; print\\(chromadb.__version__\\)\")",
+      "Bash(uv sync *)"
+    ]
+  }
+}
