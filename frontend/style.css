@@ -111,6 +111,27 @@ header h1 {
     margin-bottom: 0;
 }
 
+.new-chat-btn {
+    width: 100%;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem 0;
+    text-align: left;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: color 0.2s ease;
+    outline: none;
+}
+
+.new-chat-btn:hover,
+.new-chat-btn:focus {
+    color: var(--primary-color);
+}
+
 /* Main Chat Area */
 .chat-main {
     flex: 1;
@@ -220,16 +241,37 @@ header h1 {
 
 /* Collapsible Sources */
 .sources-collapsible {
-    margin-top: 0.5rem;
+    margin-top: 0.75rem;
     font-size: 0.75rem;
-    color: var(--text-secondary);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: 0.5rem;
 }
 
 .sources-collapsible summary {
     cursor: pointer;
-    padding: 0.25rem 0.5rem;
+    padding: 0.2rem 0.25rem;
     user-select: none;
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.sources-collapsible summary::-webkit-details-marker { display: none; }
+
+.sources-collapsible summary::after {
+    content: '▸';
+    font-size: 0.65rem;
+    transition: transform 0.15s ease;
+}
+
+.sources-collapsible[open] summary::after {
+    transform: rotate(90deg);
 }
 
 .sources-collapsible summary:hover {
@@ -237,12 +279,38 @@ header h1 {
 }
 
 .sources-collapsible[open] summary {
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.5rem;
 }
 
 .sources-content {
-    padding: 0 0.5rem 0.25rem 1.5rem;
-    color: var(--text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 0 0.25rem 0.25rem;
+}
+
+.source-pill {
+    display: inline-block;
+    padding: 0.25rem 0.6rem;
+    border-radius: 9999px;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #93c5fd;
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 28ch;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+a.source-pill:hover {
+    background: rgba(147, 197, 253, 0.15);
+    border-color: rgba(147, 197, 253, 0.4);
+    color: #bfdbfe;
+    text-decoration: none;
 }
 
 /* Markdown formatting styles */

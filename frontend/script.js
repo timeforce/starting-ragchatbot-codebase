@@ -30,6 +30,18 @@ function setupEventListeners() {
     });
     
     
+    // New chat button
+    document.getElementById('newChatBtn').addEventListener('click', () => {
+        if (currentSessionId) {
+            fetch(`${API_URL}/session/clear`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ session_id: currentSessionId })
+            });
+        }
+        createNewSession();
+    });
+
     // Suggested questions
     document.querySelectorAll('.suggested-item').forEach(button => {
         button.addEventListener('click', (e) => {
@@ -124,13 +136,13 @@ function addMessage(content, type, sources = null, isWelcome = false) {
     if (sources && sources.length > 0) {
         const sourceLinks = sources.map(s => {
             if (s.url) {
-                return `<a href="${s.url}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.label)}</a>`;
+                return `<a class="source-pill" href="${s.url}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.label)}</a>`;
             }
-            return escapeHtml(s.label);
-        }).join(', ');
+            return `<span class="source-pill">${escapeHtml(s.label)}</span>`;
+        }).join('');
         html += `
             <details class="sources-collapsible">
-                <summary class="sources-header">Sources</summary>
+                <summary class="sources-header">&#128279; Sources</summary>
                 <div class="sources-content">${sourceLinks}</div>
             </details>
         `;
