@@ -1,3 +1,4 @@
+import sys
 import pytest
 from unittest.mock import MagicMock, patch
 
@@ -41,7 +42,7 @@ def make_empty_content_message():
     return msg
 
 
-# --- Fixtures ---
+# --- Unit test fixtures ---
 
 @pytest.fixture
 def mock_anthropic_client():
@@ -71,3 +72,53 @@ def mock_tool_manager():
     tm.execute_tool.return_value = "Mocked tool result"
     tm.get_last_sources.return_value = []
     return tm
+
+
+# --- API test fixtures ---
+
+@pytest.fixture
+def mock_rag_system():
+    """Mocked RAGSystem for FastAPI endpoint tests."""
+    mock = MagicMock()
+    mock.query.return_value = (
+        "Test answer.",
+        [{"label": "Course A - Lesson 1", "url": "http://example.com/lesson1"}],
+    )
+    mock.get_course_analytics.return_value = {
+        "total_courses": 2,
+        "course_titles": ["Course A", "Course B"],
+    }
+    mock.session_manager.create_session.return_value = "auto-session-001"
+    return mock
+
+
+@pytest.fixture
+def test_client(mock_rag_system):
+    """
+    TestClient for the FastAPI app. RAGSystem is mocked (no ChromaDB / Anthropic
+    calls) and StaticFiles is replaced with a stub so the missing ../frontend
+    directory does not cause an ImportError.
+
+    The app module is removed from sys.modules before import so each test gets
+    a fresh app instance with the patches active.
+    """
+    from fastapi.testclient import TestClient
+
+    sys.modules.pop("app", None)
+
+    class _FakeStaticFiles:
+        """Minimal ASGI stub — satisfies app.mount() without touching the filesystem."""
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __call__(self, scope, receive, send):
+            from starlette.responses import Response
+            await Response("", status_code=404)(scope, receive, send)
+
+    with patch("rag_system.RAGSystem", return_value=mock_rag_system), \
+         patch("fastapi.staticfiles.StaticFiles", _FakeStaticFiles):
+        import app as _app
+        with TestClient(_app.app) as client:
+            yield client
+
+    sys.modules.pop("app", None)
