@@ -105,8 +105,8 @@ class CourseSearchTool(Tool):
             if lesson_num is not None:
                 source_label += f" - Lesson {lesson_num}"
 
-            lesson_link = None
-            if lesson_num is not None:
+            lesson_link = meta.get('lesson_link')
+            if lesson_link is None and lesson_num is not None:
                 lesson_link = self.store.get_lesson_link(course_title, lesson_num)
             sources.append({"label": source_label, "url": lesson_link})
             
