@@ -28,7 +28,9 @@
       "Bash(dir \"C:\\\\Users\\\\86139\\\\Documents\\\\starting-ragchatbot-codebase-main\\\\starting-ragchatbot-codebase-main\\\\backend\")",
       "Bash(python -c \"import sys; print\\(sys.version\\)\")",
       "Bash(.venv/Scripts/python.exe -c \"import chromadb; print\\(chromadb.__version__\\)\")",
-      "Bash(uv sync *)"
+      "Bash(uv sync *)",
+      "Bash(python *)",
+      "Bash(echo \"exit:$?\")"
     ]
   }
 }
