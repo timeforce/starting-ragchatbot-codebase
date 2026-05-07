@@ -1,17 +1,24 @@
 import anthropic
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Tuple
 
 class AIGenerator:
     """Handles interactions with Anthropic's Claude API for generating responses"""
-    
+
+    MAX_TOOL_ROUNDS = 2
+
     # Static system prompt to avoid rebuilding on each call
     SYSTEM_PROMPT = """ You are an AI assistant specialized in course materials and educational content with access to a comprehensive search tool for course information.
 
-Search Tool Usage:
-- Use the search tool **only** for questions about specific course content or detailed educational materials
-- **One search per query maximum**
-- Synthesize search results into accurate, fact-based responses
-- If search yields no results, state this clearly without offering alternatives
+Search & Outline Tool Usage:
+- Use **search_course_content** only for questions about specific course topics or educational details
+- Use **get_course_outline** for questions about course structure, lesson list, or course overview
+- You may make up to 2 sequential tool calls when a query requires chained lookups
+  (e.g. first retrieve a course outline to identify a lesson topic, then search for
+  that topic in a second call)
+- Only chain a second tool call when the first result is needed to form the second query
+- For outline queries, present: course title, course link, and each lesson number with its title
+- Synthesize tool results into accurate, fact-based responses
+- If a tool yields no results, state this clearly without offering alternatives
 
 Response Protocol:
 - **General knowledge questions**: Answer using existing knowledge without searching
@@ -28,108 +35,104 @@ All responses must be:
 4. **Example-supported** - Include relevant examples when they aid understanding
 Provide only the direct answer to what was asked.
 """
-    
+
     def __init__(self, api_key: str, model: str):
         self.client = anthropic.Anthropic(api_key=api_key)
         self.model = model
-        
+
         # Pre-build base API parameters
         self.base_params = {
             "model": self.model,
             "temperature": 0,
             "max_tokens": 800
         }
-    
+
     def generate_response(self, query: str,
                          conversation_history: Optional[str] = None,
                          tools: Optional[List] = None,
                          tool_manager=None) -> str:
         """
         Generate AI response with optional tool usage and conversation context.
-        
+
         Args:
             query: The user's question or request
             conversation_history: Previous messages for context
             tools: Available tools the AI can use
             tool_manager: Manager to execute tools
-            
+
         Returns:
             Generated response as string
         """
-        
-        # Build system content efficiently - avoid string ops when possible
+
         system_content = (
             f"{self.SYSTEM_PROMPT}\n\nPrevious conversation:\n{conversation_history}"
-            if conversation_history 
+            if conversation_history
             else self.SYSTEM_PROMPT
         )
-        
-        # Prepare API call parameters efficiently
+
+        messages = [{"role": "user", "content": query}]
         api_params = {
             **self.base_params,
-            "messages": [{"role": "user", "content": query}],
+            "messages": messages,
             "system": system_content
         }
-        
-        # Add tools if available
         if tools:
             api_params["tools"] = tools
             api_params["tool_choice"] = {"type": "auto"}
-        
-        # Get response from Claude
-        response = self.client.messages.create(**api_params)
-        
-        # Handle tool execution if needed
-        if response.stop_reason == "tool_use" and tool_manager:
-            return self._handle_tool_execution(response, api_params, tool_manager)
-        
-        # Return direct response
-        return response.content[0].text
-    
-    def _handle_tool_execution(self, initial_response, base_params: Dict[str, Any], tool_manager):
-        """
-        Handle execution of tool calls and get follow-up response.
-        
-        Args:
-            initial_response: The response containing tool use requests
-            base_params: Base API parameters
-            tool_manager: Manager to execute tools
-            
-        Returns:
-            Final response text after tool execution
-        """
-        # Start with existing messages
-        messages = base_params["messages"].copy()
-        
-        # Add AI's tool use response
-        messages.append({"role": "assistant", "content": initial_response.content})
-        
-        # Execute all tool calls and collect results
-        tool_results = []
-        for content_block in initial_response.content:
-            if content_block.type == "tool_use":
-                tool_result = tool_manager.execute_tool(
-                    content_block.name, 
-                    **content_block.input
-                )
-                
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": content_block.id,
-                    "content": tool_result
-                })
-        
-        # Add tool results as single message
-        if tool_results:
-            messages.append({"role": "user", "content": tool_results})
-        
-        # Prepare final API call without tools
-        final_params = {
-            **self.base_params,
-            "messages": messages,
-            "system": base_params["system"]
-        }
-        
-        # Get final response
+
+        # Agentic loop: up to MAX_TOOL_ROUNDS rounds with tools available
+        for _round in range(self.MAX_TOOL_ROUNDS):
+            response = self.client.messages.create(**api_params)
+
+            # Condition B: direct answer or no tool manager to execute calls
+            if response.stop_reason != "tool_use" or not tool_manager:
+                break
+
+            tool_results, had_failure = self._execute_tool_round(response, tool_manager)
+
+            messages.append({"role": "assistant", "content": response.content})
+            if tool_results:
+                messages.append({"role": "user", "content": tool_results})
+
+            # Condition C: tool execution failed — fall through to synthesis
+            if had_failure:
+                break
+        # for-else (condition A): loop exhausted all rounds without a break;
+        # response still has stop_reason="tool_use", so synthesis call follows below
+
+        if response.stop_reason != "tool_use":
+            if not response.content:
+                return "I was unable to generate a response. Please try again."
+            return response.content[0].text
+
+        # Final synthesis call — no tools; Claude synthesizes from accumulated history
+        final_params = {**self.base_params, "messages": messages, "system": system_content}
         final_response = self.client.messages.create(**final_params)
+        if not final_response.content:
+            return "I was unable to synthesize a response from the search results. Please try again."
         return final_response.content[0].text
+
+    def _execute_tool_round(self, response, tool_manager) -> Tuple[list, bool]:
+        """
+        Execute all tool_use blocks in one Claude response.
+
+        Returns:
+            (tool_results, had_failure): list of Anthropic tool_result dicts and
+            whether any tool raised an exception.
+        """
+        tool_results = []
+        had_failure = False
+        for block in response.content:
+            if block.type != "tool_use":
+                continue
+            try:
+                result = tool_manager.execute_tool(block.name, **block.input)
+            except Exception as e:
+                result = f"Tool execution error: {e}"
+                had_failure = True
+            tool_results.append({
+                "type": "tool_result",
+                "tool_use_id": block.id,
+                "content": result,
+            })
+        return tool_results, had_failure
